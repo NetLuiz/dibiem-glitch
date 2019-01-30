@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Send Embed Message",
+name: "Store Reaction Info",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Send Embed Message",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Embed Message",
+section: "Reaction Control",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,8 +23,9 @@ section: "Embed Message",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	const channels = ['Same Channel', 'Command Author', 'Mentioned User', 'Mentioned Channel', 'Default Channel', 'Temp Variable', 'Server Variable', 'Global Variable']
-	return `${channels[parseInt(data.channel)]}: ${data.varName}`;
+	const reaction = ['You cheater!', 'Temp Variable', 'Server Variable', 'Global Variable'];
+	const info = ['Message Object', 'Bot reacted?', 'Users Who Reacted List', 'Emoji Name', 'Reaction Count', 'First User to React', 'Random User to React', 'Last User to React'];
+	return `${reaction[parseInt(data.reaction)]} - ${info[parseInt(data.info)]}`;
 },
 
 //---------------------------------------------------------------------
@@ -35,18 +36,19 @@ subtitle: function(data) {
 //---------------------------------------------------------------------
 
 // Who made the mod (If not set, defaults to "DBM Mods")
-author: "DBM, General Wrex, Lasse & NetLuis",
+author: "Lasse & MrGold",
 
 // The version of the mod (Defaults to 1.0.0)
-version: "1.9.4", //Added in 1.9.4
+version: "1.9.1", //Added in 1.8.8
 
 // A short description to show on the mod line for this mod (Must be on a single line)
-short_description: "Added If Message Delivery Fails option.",
+short_description: "Stores Messages Reaction information",
 
 // If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
+depends_on_mods: [
+{name:'WrexMods',path:'aaa_wrexmods_dependencies_MOD.js'}
+],
 
-
-//---------------------------------------------------------------------
 
 //---------------------------------------------------------------------
 // Action Storage Function
@@ -55,9 +57,37 @@ short_description: "Added If Message Delivery Fails option.",
 //---------------------------------------------------------------------
 
 variableStorage: function(data, varType) {
-	const type = parseInt(data.storage3);
+	const type = parseInt(data.storage);
 	if(type !== varType) return;
-	return ([data.varName3, 'Message']);
+	const info = parseInt(data.info);
+	let dataType = 'Unknown Type';
+	switch(info) {
+		case 0:
+			dataType = "Message";
+			break;
+		case 1:
+			dataType = "Boolean";
+			break;
+		case 2:
+			dataType = "List";
+			break;
+		case 3:
+			dataType = "String";
+			break;
+		case 4:
+			dataType = "Number";
+			break;
+		case 5:
+			dataType = "User";
+			break;
+		case 6:
+			dataType = "User";
+			break;
+		case 7:
+			dataType = "User";
+			break;
+	}
+	return ([data.varName2, dataType]);
 },
 
 //---------------------------------------------------------------------
@@ -68,7 +98,7 @@ variableStorage: function(data, varType) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["storage", "varName", "channel", "varName2", "storage3", "varName3"],
+fields: ["reaction", "varName", "info", "storage", "varName2"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -88,11 +118,16 @@ fields: ["storage", "varName", "channel", "varName2", "storage3", "varName3"],
 
 html: function(isEvent, data) {
 	return `
-<div><p>This action has been modified by DBM Mods.</p></div><br>
+	<div>
+		<p>
+			<u>Mod Info:</u><br>
+			Created by Lasse & MrGold!
+		</p>
+	</div><br>
 <div>
 	<div style="float: left; width: 35%;">
-		Source Embed Object:<br>
-		<select id="storage" class="round" onchange="glob.refreshVariableList(this)">
+		Source Reaction:<br>
+		<select id="reaction" class="round" onchange="glob.refreshVariableList(this)">
 			${data.variables[1]}
 		</select>
 	</div>
@@ -101,39 +136,35 @@ html: function(isEvent, data) {
 		<input id="varName" class="round" type="text" list="variableList"><br>
 	</div>
 </div><br><br><br>
-<div style="padding-top: 8px; float: left; width: 35%;">
-	Send To:<br>
-	<select id="channel" class="round" onchange="glob.sendTargetChange(this, 'varNameContainer2')">
-		${data.sendTargets[isEvent ? 1 : 0]}
-	</select>
-</div>
-<div id="varNameContainer2" style="display: none; float: right; width: 60%;">
-	Variable Name:<br>
-	<input id="varName2" class="round" type="text" list="variableList"><br>
-</div><br><br><br><br>
-<div style="float: left; width: 35%;">
-Store Message Object In:<br>
-	<select id="storage3" class="round" onchange="glob.variableChange(this, 'varNameContainer3')">
-		${data.variables[0]}
-	</select>
-</div>	
-<div id="varNameContainer3" style="display: ; float: right; width: 60%;">
-	Storage Variable Name:<br>
-	<input id="varName3" class="round" type="text">
-	</div><br><br><br>
-	<div style="padding-top: 8px;">
-			<div style="float: left; width: 35%;">
-				If Message Delivery Fails:<br>
-				<select id="iffalse" class="round" onchange="glob.onChangeFalse(this)">
-					<option value="0" selected>Continue Actions</option>
-					<option value="1">Stop Action Sequence</option>
-					<option value="2">Jump To Action</option>
-					<option value="3">Skip Next Actions</option>
-			 </select>
-			</div>
-			<div id="iffalseContainer" style="display: none; float: right; width: 60%;"><span id="iffalseName">Action Number</span>:<br><input id="iffalseVal" class="round" type="text"></div>`;
+<div>
+	<div style="padding-top: 8px; width: 70%;">
+		Source Info:<br>
+		<select id="info" class="round">
+			<option value="0" selected>Message Object</option>
+			<option value="5">First User to React</option>
+			<option value="6">Random User to React</option>
+			<option value="7">Last User to React</option>
+			<option value="1">Bot Reacted?</option>
+			<option value="2">User Who Reacted List</option>
+			<option value="3">Emoji Name</option>
+			<option value="4">Reaction Count</option>
+		</select>
+	</div>
+</div><br>
+<div>
+	<div style="float: left; width: 35%;">
+		Store In:<br>
+		<select id="storage" class="round">
+			${data.variables[1]}
+		</select>
+	</div>
+	<div id="varNameContainer2" style="float: right; width: 60%;">
+		Variable Name:<br>
+		<input id="varName2" class="round" type="text"><br>
+	</div>
+</div>`
 },
-
+//display: none;
 //---------------------------------------------------------------------
 // Action Editor Init Code
 //
@@ -145,9 +176,7 @@ Store Message Object In:<br>
 init: function() {
 	const {glob, document} = this;
 
-	glob.sendTargetChange(document.getElementById('channel'), 'varNameContainer2');
-	glob.variableChange(document.getElementById('storage3'), 'varNameContainer3');
-	glob.onChangeFalse(document.getElementById('iffalse'));
+	glob.refreshVariableList(document.getElementById('reaction'));
 },
 
 //---------------------------------------------------------------------
@@ -160,39 +189,54 @@ init: function() {
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const server = cache.server;
-	const storage = parseInt(data.storage);
+	const reaction = parseInt(data.reaction);
 	const varName = this.evalMessage(data.varName, cache);
-	const embed = this.getVariable(storage, varName, cache);
-	if(!embed) {
-		this.callNextAction(cache);
-		return;
-	}
-
-	const msg = cache.msg;
-	const channel = parseInt(data.channel);
-	const varName2 = this.evalMessage(data.varName2, cache);
-	const varName3 = this.evalMessage(data.varName3, cache);
-	const storage3 = parseInt(data.storage3);
-	const target = this.getSendTarget(channel, varName2, cache);
-	
-	if(target && target.send) {
-		try {
-			target.send({embed}).then(function(message) {                 
-				if(message && varName3) this.storeValue(message, storage3, varName3, cache);
-				this.callNextAction(cache);
-			}.bind(this)).catch(err => {
-				if(err.message == ('Cannot send messages to this user')) {
-					this.executeResults(false, data, cache);
-				} else {
-				this.displayError.bind(this, data, cache)}
-			});
-		} catch (e) {
-			this.displayError(data, cache, e)
-		}
-	} else {
+	const info = parseInt(data.info);
+	var WrexMods = this.getWrexMods(); //Find aaa_wrexmods_dependencies_MOD
+	const rea = WrexMods.getReaction(reaction, varName, cache); //Get Reaction
+	if(!WrexMods) return;
+	if(!rea) {
+		console.log('This is not a reaction'); //Variable is not a reaction -> Error
 		this.callNextAction(cache);
 	}
+	let result;
+	switch(info) {
+		case 0:
+			result = rea.message; //Message Object
+			break;
+		case 1:
+			result = rea.me; //This bot reacted?
+			break;
+		case 2:
+			result = rea.users.array(); //All users who reacted list
+			break;
+		case 3:
+			result = rea.emoji.name; //Emoji (/Reaction) name
+			break;
+		case 4:
+			result = rea.count; //Number (user+bots) who reacted like this
+			break;
+		case 5:
+			const firstid = rea.users.firstKey(); //Stores first user ID reacted
+			result = cache.server.members.find(element => element.id === firstid);
+			break;
+		case 6:
+			const randomid = rea.users.randomKey(); //Stores random user ID reacted
+			result = cache.server.members.find(element => element.id === randomid);
+			break;
+		case 7:
+			const lastid = rea.users.lastKey(); //Stores last user ID reacted
+			result = cache.server.members.find(element => element.id === lastid);
+			break;
+		default:
+			break;
+	}
+	if(result !== undefined) {
+		const storage = parseInt(data.storage);
+		const varName2 = this.evalMessage(data.varName2, cache);
+		this.storeValue(result, storage, varName2, cache);
+	}
+	this.callNextAction(cache);
 },
 
 //---------------------------------------------------------------------

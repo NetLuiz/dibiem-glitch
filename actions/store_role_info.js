@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Send Embed Message",
+name: "Store Role Info",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Send Embed Message",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Embed Message",
+section: "Role Control",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,9 +23,11 @@ section: "Embed Message",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	const channels = ['Same Channel', 'Command Author', 'Mentioned User', 'Mentioned Channel', 'Default Channel', 'Temp Variable', 'Server Variable', 'Global Variable']
-	return `${channels[parseInt(data.channel)]}: ${data.varName}`;
+	const roles = ['Mentioned Role', '1st Author Role', '1st Server Role', 'Temp Variable', 'Server Variable', 'Global Variable'];
+	const info = ['Role Object', 'Role ID', 'Role Name', 'Role Color', 'Role Position', 'Role Timestamp', 'Role Is Mentionable?', 'Role Is Separate From Others?', 'Role Is Managed?', 'Role Member List']
+	return `${roles[parseInt(data.role)]} - ${info[parseInt(data.info)]}`;
 },
+
 
 //---------------------------------------------------------------------
 // DBM Mods Manager Variables (Optional but nice to have!)
@@ -35,13 +37,13 @@ subtitle: function(data) {
 //---------------------------------------------------------------------
 
 // Who made the mod (If not set, defaults to "DBM Mods")
-author: "DBM, General Wrex, Lasse & NetLuis",
+author: "DBM & Lasse",
 
 // The version of the mod (Defaults to 1.0.0)
-version: "1.9.4", //Added in 1.9.4
+version: "1.9.2", //Added in 1.9.2
 
 // A short description to show on the mod line for this mod (Must be on a single line)
-short_description: "Added If Message Delivery Fails option.",
+short_description: "More options for default DBM action.",
 
 // If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
 
@@ -55,9 +57,37 @@ short_description: "Added If Message Delivery Fails option.",
 //---------------------------------------------------------------------
 
 variableStorage: function(data, varType) {
-	const type = parseInt(data.storage3);
+	const type = parseInt(data.storage);
 	if(type !== varType) return;
-	return ([data.varName3, 'Message']);
+	const info = parseInt(data.info);
+	let dataType = 'Unknown Type';
+	switch(info) {
+		case 0:
+			dataType = 'Role';
+			break;
+		case 1:
+			dataType = 'Role ID';
+			break;
+		case 2:
+			dataType = 'Text';
+			break;
+		case 3:
+			dataType = 'Color';
+			break;
+		case 4:
+		case 5:
+			dataType = 'Text';
+			break;
+		case 6:
+		case 7:
+		case 8:
+			dataType = 'Boolean';
+			break;
+		case 9:
+			dataType = 'Member List';
+			break;
+	}
+	return ([data.varName2, dataType]);
 },
 
 //---------------------------------------------------------------------
@@ -68,70 +98,68 @@ variableStorage: function(data, varType) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["storage", "varName", "channel", "varName2", "storage3", "varName3"],
+fields: ["role", "varName", "info", "storage", "varName2"],
 
 //---------------------------------------------------------------------
 // Command HTML
 //
 // This function returns a string containing the HTML used for
-// editting actions.
+// editting actions. 
 //
 // The "isEvent" parameter will be true if this action is being used
-// for an event. Due to their nature, events lack certain information,
+// for an event. Due to their nature, events lack certain information, 
 // so edit the HTML to reflect this.
 //
-// The "data" parameter stores constants for select elements to use.
+// The "data" parameter stores constants for select elements to use. 
 // Each is an array: index 0 for commands, index 1 for events.
-// The names are: sendTargets, members, roles, channels,
+// The names are: sendTargets, members, roles, channels, 
 //                messages, servers, variables
 //---------------------------------------------------------------------
 
 html: function(isEvent, data) {
 	return `
-<div><p>This action has been modified by DBM Mods.</p></div><br>
+	<div><p>This action has been modified by DBM Mods.</p></div><br>
 <div>
 	<div style="float: left; width: 35%;">
-		Source Embed Object:<br>
-		<select id="storage" class="round" onchange="glob.refreshVariableList(this)">
-			${data.variables[1]}
+		Source Role:<br>
+		<select id="role" class="round" onchange="glob.roleChange(this, 'varNameContainer')">
+			${data.roles[isEvent ? 1 : 0]}
 		</select>
 	</div>
-	<div id="varNameContainer" style="float: right; width: 60%;">
+	<div id="varNameContainer" style="display: none; float: right; width: 60%;">
 		Variable Name:<br>
 		<input id="varName" class="round" type="text" list="variableList"><br>
 	</div>
 </div><br><br><br>
-<div style="padding-top: 8px; float: left; width: 35%;">
-	Send To:<br>
-	<select id="channel" class="round" onchange="glob.sendTargetChange(this, 'varNameContainer2')">
-		${data.sendTargets[isEvent ? 1 : 0]}
-	</select>
-</div>
-<div id="varNameContainer2" style="display: none; float: right; width: 60%;">
-	Variable Name:<br>
-	<input id="varName2" class="round" type="text" list="variableList"><br>
-</div><br><br><br><br>
-<div style="float: left; width: 35%;">
-Store Message Object In:<br>
-	<select id="storage3" class="round" onchange="glob.variableChange(this, 'varNameContainer3')">
-		${data.variables[0]}
-	</select>
-</div>	
-<div id="varNameContainer3" style="display: ; float: right; width: 60%;">
-	Storage Variable Name:<br>
-	<input id="varName3" class="round" type="text">
-	</div><br><br><br>
-	<div style="padding-top: 8px;">
-			<div style="float: left; width: 35%;">
-				If Message Delivery Fails:<br>
-				<select id="iffalse" class="round" onchange="glob.onChangeFalse(this)">
-					<option value="0" selected>Continue Actions</option>
-					<option value="1">Stop Action Sequence</option>
-					<option value="2">Jump To Action</option>
-					<option value="3">Skip Next Actions</option>
-			 </select>
-			</div>
-			<div id="iffalseContainer" style="display: none; float: right; width: 60%;"><span id="iffalseName">Action Number</span>:<br><input id="iffalseVal" class="round" type="text"></div>`;
+<div>
+	<div style="padding-top: 8px; width: 70%;">
+		Source Info:<br>
+		<select id="info" class="round">
+			<option value="0" selected>Role Object</option>
+			<option value="1">Role ID</option>
+			<option value="2">Role Name</option>
+			<option value="3">Role Color</option>
+			<option value="4">Role Position</option>
+			<option value="5">Role Timestamp</option>
+			<option value="9">Role Members</option>
+			<option value="6">Role Is Mentionable?</option>
+			<option value="7">Role Is Separate From Others?</option>
+			<option value="8">Role Is Managed By Bot/Integration</option>
+		</select>
+	</div>
+</div><br>
+<div>
+	<div style="float: left; width: 35%;">
+		Store In:<br>
+		<select id="storage" class="round">
+			${data.variables[1]}
+		</select>
+	</div>
+	<div id="varNameContainer2" style="float: right; width: 60%;">
+		Variable Name:<br>
+		<input id="varName2" class="round" type="text"><br>
+	</div>
+</div>`
 },
 
 //---------------------------------------------------------------------
@@ -145,54 +173,68 @@ Store Message Object In:<br>
 init: function() {
 	const {glob, document} = this;
 
-	glob.sendTargetChange(document.getElementById('channel'), 'varNameContainer2');
-	glob.variableChange(document.getElementById('storage3'), 'varNameContainer3');
-	glob.onChangeFalse(document.getElementById('iffalse'));
+	glob.roleChange(document.getElementById('role'), 'varNameContainer')
 },
 
 //---------------------------------------------------------------------
 // Action Bot Function
 //
 // This is the function for the action within the Bot's Action class.
-// Keep in mind event calls won't have access to the "msg" parameter,
+// Keep in mind event calls won't have access to the "msg" parameter, 
 // so be sure to provide checks for variable existance.
 //---------------------------------------------------------------------
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const server = cache.server;
-	const storage = parseInt(data.storage);
+	const role = parseInt(data.role);
 	const varName = this.evalMessage(data.varName, cache);
-	const embed = this.getVariable(storage, varName, cache);
-	if(!embed) {
+	const info = parseInt(data.info);
+	const targetRole = this.getRole(role, varName, cache);
+	if(!targetRole) {
 		this.callNextAction(cache);
 		return;
 	}
-
-	const msg = cache.msg;
-	const channel = parseInt(data.channel);
-	const varName2 = this.evalMessage(data.varName2, cache);
-	const varName3 = this.evalMessage(data.varName3, cache);
-	const storage3 = parseInt(data.storage3);
-	const target = this.getSendTarget(channel, varName2, cache);
-	
-	if(target && target.send) {
-		try {
-			target.send({embed}).then(function(message) {                 
-				if(message && varName3) this.storeValue(message, storage3, varName3, cache);
-				this.callNextAction(cache);
-			}.bind(this)).catch(err => {
-				if(err.message == ('Cannot send messages to this user')) {
-					this.executeResults(false, data, cache);
-				} else {
-				this.displayError.bind(this, data, cache)}
-			});
-		} catch (e) {
-			this.displayError(data, cache, e)
-		}
-	} else {
-		this.callNextAction(cache);
+	let result;
+	switch(info) {
+		case 0:
+			result = targetRole;
+			break;
+		case 1:
+			result = targetRole.id;
+			break;
+		case 2:
+			result = targetRole.name;
+			break;
+		case 3:
+			result = targetRole.hexColor;
+			break;
+		case 4:
+			result = targetRole.position;
+			break;
+		case 5:
+			result = targetRole.createdTimestamp;
+			break;
+		case 6:
+			result = targetRole.mentionable;
+			break;
+		case 7:
+			result = targetRole.hoist;
+			break;
+		case 8:
+			result = targetRole.managed;
+			break;
+		case 9:
+			result = targetRole.members.array();
+			break;
+		default:
+			break;
 	}
+	if(result !== undefined) {
+		const storage = parseInt(data.storage);
+		const varName2 = this.evalMessage(data.varName2, cache);
+		this.storeValue(result, storage, varName2, cache);
+	}
+	this.callNextAction(cache);
 },
 
 //---------------------------------------------------------------------
