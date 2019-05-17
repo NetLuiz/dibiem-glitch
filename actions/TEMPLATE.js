@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Set Member Permissions",
+name: "The action name in the search window.",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,15 @@ name: "Set Member Permissions",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Member Control",
+section: "The category the action is under.",
+
+	
+//---------------------------------------------------------------------
+// DBM Mods Manager Variables (Optional but nice to have!)
+//
+// These are variables that DBM Mods Manager uses to show information
+// about the mods for people to see in the list.
+//---------------------------------------------------------------------
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,8 +31,37 @@ section: "Member Control",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	const channels = ['Mentioned User', 'Command Author', 'Temp Variable', 'Server Variable', 'Global Variable'];
-	return `${channels[parseInt(data.member)]}`;
+	// Each item corresponds to each switch statement.
+	const info = ['Item 1', 'Item 2', 'Item 3'];
+	// What user sees when previewing actions box on bottom.
+	return `What I'm doing: ${info[data.info]}`;
+},
+
+// Who made the mod (If not set, defaults to "DBM Mods")
+author: "YOUR NAME",
+
+// The version of the mod (Last edited version number of DBM Mods)
+version: "1.0.0", //Added in 1.0.0
+
+// A short description to show on the mod line for this mod (Must be on a single line)
+short_description: "A short description of the mod.",
+
+// If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
+// Uncomment if you need this. Also, replace WrexMODS if needed.
+// depends_on_mods: ["WrexMODS"],
+
+
+//---------------------------------------------------------------------
+// Action Storage Function
+//
+// Stores the relevant variable info for the editor.
+//---------------------------------------------------------------------
+
+variableStorage: function (data, varType) {
+	const type = parseInt(data.storage);
+	if (type !== varType) return;
+	let dataType = 'Number';
+	return ([data.varName, dataType]);
 },
 
 //---------------------------------------------------------------------
@@ -35,7 +72,8 @@ subtitle: function(data) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["member", "varName", "permission", "action"],
+// 1 item for each HTML element.
+fields: ["FirstTextBox", "info", "storage", "varName"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -55,33 +93,38 @@ fields: ["member", "varName", "permission", "action"],
 
 html: function(isEvent, data) {
 	return `
-<div>
-	<div style="float: left; width: 35%;">
-		Source Member:<br>
-		<select id="member" class="round" onchange="glob.memberChange(this, 'varNameContainer')">
-			${data.members[isEvent ? 1 : 0]}
-		</select>
-	</div>
-	<div id="varNameContainer" style="display: none; float: right; width: 60%;">
-		Variable Name:<br>
-		<input id="varName" class="round" type="text" list="variableList"><br>
-	</div>
-</div><br><br><br>
+	<div>
+		<p>
+			<u>Mod Info:</u><br>
+			Created by YOUR NAME
+		</p>
+	</div><br>
+<div style="width: 90%;">
+	Variable or String:<br>
+	<input id="VariableTextBox" class="round" type="text">
+</div><br>
+<div style="padding-top: 8px; width: 60%;">
+	Options:
+	<select id="info" class="round">
+			<option value="0" selected>Option 1</option>
+			<option value="1">Option 2</option>
+			<option value="2">Option 3</option>
+			<option value="3">Option 4</option>
+	</select>
+</div><br>
 <div style="padding-top: 8px;">
-	<div style="float: left; width: 45%;">
-		Permission:<br>
-		<select id="permission" class="round">
-			${data.permissions[2]}
+	<div style="float: left; width: 35%;">
+		Store In:<br>
+		<select id="storage" class="round">
+			${data.variables[1]}
 		</select>
 	</div>
-	<div style="float: right; width: 50%;">
-		Action:<br>
-		<select id="action" class="round">
-			<option value="0" selected>Add</option>
-			<option value="1">Remove</option>
-		</select>
+	<div id="varNameContainer" style="float: right; width: 60%;">
+		Variable Name:<br>
+		<input id="varName" class="round" type="text">
 	</div>
-</div>`
+</div>
+	`
 },
 
 //---------------------------------------------------------------------
@@ -92,11 +135,7 @@ html: function(isEvent, data) {
 // functions for the DOM elements.
 //---------------------------------------------------------------------
 
-init: function() {
-	const {glob, document} = this;
-
-	glob.memberChange(document.getElementById('member'), 'varNameContainer');
-},
+init: function() {},
 
 //---------------------------------------------------------------------
 // Action Bot Function
@@ -108,17 +147,36 @@ init: function() {
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const storage = parseInt(data.member);
+	const storage = parseInt(data.storage);
 	const varName = this.evalMessage(data.varName, cache);
-	const member = this.getMember(storage, varName, cache);
-	const funcName = data.action === "0" ? "add" : "remove";
-	if(member && member.permissions) {
-		member.permissions[funcName](data.permission).then(function() {
-			this.callNextAction(cache);
-		}.bind(this)).catch(this.displayError.bind(this, data, cache));
-	} else {
-		this.callNextAction(cache);
+	const INFO = parseInt(data.info);
+	let result;
+	
+	switch(INFO) {
+		case 0:		
+		
+			break;
+		case 1:
+		
+			break;
+		case 2:
+		
+			break;
+		case 3:
+		
+			break;
+		case 4:
+			
+			break;
+	`END OF SWITCH STATEMENT`
 	}
+	
+	if (result !== undefined) {
+		const storage = parseInt(data.storage);
+		const varName = this.evalMessage(data.varName, cache);
+		this.storeValue(result, storage, varName, cache);
+	}
+	this.callNextAction(cache);
 },
 
 //---------------------------------------------------------------------

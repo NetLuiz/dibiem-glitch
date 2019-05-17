@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Set Member Permissions",
+name: "Store Server Data",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Set Member Permissions",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Member Control",
+section: "Deprecated",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,8 +23,21 @@ section: "Member Control",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	const channels = ['Mentioned User', 'Command Author', 'Temp Variable', 'Server Variable', 'Global Variable'];
-	return `${channels[parseInt(data.member)]}`;
+	const servers = ['Current Server', 'Temp Variable', 'Server Variable', 'Global Variable'];
+	const storage = ['', 'Temp Variable', 'Server Variable', 'Global Variable'];
+	return `${servers[parseInt(data.server)]} - ${storage[parseInt(data.storage)]} (${data.varName2})`;
+},
+
+//---------------------------------------------------------------------
+// Action Storage Function
+//
+// Stores the relevant variable info for the editor.
+//---------------------------------------------------------------------
+
+variableStorage: function(data, varType) {
+	const type = parseInt(data.storage);
+	if(type !== varType) return;
+	return ([data.varName2, 'Unknown Type']);
 },
 
 //---------------------------------------------------------------------
@@ -35,7 +48,7 @@ subtitle: function(data) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["member", "varName", "permission", "action"],
+fields: ["server", "varName", "dataName", "defaultVal", "storage", "varName2"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -57,29 +70,36 @@ html: function(isEvent, data) {
 	return `
 <div>
 	<div style="float: left; width: 35%;">
-		Source Member:<br>
-		<select id="member" class="round" onchange="glob.memberChange(this, 'varNameContainer')">
-			${data.members[isEvent ? 1 : 0]}
+		Server:<br>
+		<select id="server" class="round" onchange="glob.serverChange(this, 'varNameContainer')">
+			${data.servers[isEvent ? 1 : 0]}
 		</select>
 	</div>
 	<div id="varNameContainer" style="display: none; float: right; width: 60%;">
 		Variable Name:<br>
-		<input id="varName" class="round" type="text" list="variableList"><br>
+		<input id="varName" class="round" type="text" list="variableList">
 	</div>
 </div><br><br><br>
 <div style="padding-top: 8px;">
-	<div style="float: left; width: 45%;">
-		Permission:<br>
-		<select id="permission" class="round">
-			${data.permissions[2]}
+	<div style="float: left; width: 40%;">
+		Data Name:<br>
+		<input id="dataName" class="round" type="text">
+	</div>
+	<div style="float: left; width: 60%;">
+		Default Value (if data doesn't exist):<br>
+		<input id="defaultVal" class="round" type="text" value="0">
+	</div>
+</div><br><br><br>
+<div style="padding-top: 8px;">
+	<div style="float: left; width: 35%;">
+		Store In:<br>
+		<select id="storage" class="round">
+			${data.variables[1]}
 		</select>
 	</div>
-	<div style="float: right; width: 50%;">
-		Action:<br>
-		<select id="action" class="round">
-			<option value="0" selected>Add</option>
-			<option value="1">Remove</option>
-		</select>
+	<div id="varNameContainer2" style="float: right; width: 60%;">
+		Variable Name:<br>
+		<input id="varName2" class="round" type="text"><br>
 	</div>
 </div>`
 },
@@ -95,7 +115,7 @@ html: function(isEvent, data) {
 init: function() {
 	const {glob, document} = this;
 
-	glob.memberChange(document.getElementById('member'), 'varNameContainer');
+	glob.serverChange(document.getElementById('server'), 'varNameContainer');
 },
 
 //---------------------------------------------------------------------
@@ -108,17 +128,23 @@ init: function() {
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const storage = parseInt(data.member);
+	const type = parseInt(data.server);
 	const varName = this.evalMessage(data.varName, cache);
-	const member = this.getMember(storage, varName, cache);
-	const funcName = data.action === "0" ? "add" : "remove";
-	if(member && member.permissions) {
-		member.permissions[funcName](data.permission).then(function() {
-			this.callNextAction(cache);
-		}.bind(this)).catch(this.displayError.bind(this, data, cache));
-	} else {
-		this.callNextAction(cache);
+	const server = this.getServer(type, varName, cache);
+	if(server && server.data) {
+		const dataName = this.evalMessage(data.dataName, cache);
+		const defVal = this.eval(this.evalMessage(data.defaultVal, cache), cache);
+		let result;
+		if(defVal === undefined) {
+			result = server.data(dataName);
+		} else {
+			result = server.data(dataName, defVal);
+		}
+		const storage = parseInt(data.storage);
+		const varName2 = this.evalMessage(data.varName2, cache);
+		this.storeValue(result, storage, varName2, cache);
 	}
+	this.callNextAction(cache);
 },
 
 //---------------------------------------------------------------------
