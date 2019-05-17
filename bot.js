@@ -1,3 +1,13 @@
+const express = require('express');
+const keepalive = require('express-glitch-keepalive');
+const app = express();
+
+app.use(keepalive);
+ 
+app.get('/', (req, res) => {
+  res.json('Ok');
+});
+
 /*
  * Discord Bot Maker Bot
  * Version 2.0.1
