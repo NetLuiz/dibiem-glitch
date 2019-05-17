@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Create Role",
+name: "Control Global Data",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Create Role",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Role Control",
+section: "Deprecated",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,20 +23,28 @@ section: "Role Control",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	return `${data.roleName}`;
+	return `(${data.dataName}) ${data.changeType === "1" ? "+=" : "="} ${data.value}`;
 },
 
 //---------------------------------------------------------------------
-// Action Storage Function
+// DBM Mods Manager Variables (Optional but nice to have!)
 //
-// Stores the relevant variable info for the editor.
+// These are variables that DBM Mods Manager uses to show information
+// about the mods for people to see in the list.
 //---------------------------------------------------------------------
 
-variableStorage: function(data, varType) {
-	const type = parseInt(data.storage);
-	if(type !== varType) return;
-	return ([data.varName, 'Role']);
-},
+// Who made the mod (If not set, defaults to "DBM Mods")
+author: "MrGold",
+
+// The version of the mod (Defaults to 1.0.0)
+version: "1.9.5", //Added in 1.9.5
+
+// A short description to show on the mod line for this mod (Must be on a single line)
+short_description: "Adds/sets value to Globals JSON file",
+
+// If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
+
+//---------------------------------------------------------------------
 
 //---------------------------------------------------------------------
 // Action Fields
@@ -46,7 +54,7 @@ variableStorage: function(data, varType) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["roleName", "hoist", "mentionable", "color", "position", "storage", "varName"],
+fields: ["dataName", "changeType", "value"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -66,37 +74,22 @@ fields: ["roleName", "hoist", "mentionable", "color", "position", "storage", "va
 
 html: function(isEvent, data) {
 	return `
-Name:<br>
-<input id="roleName" class="round" type="text"><br>
-<div style="float: left; width: 50%;">
-	Display Separate from Online Users:<br>
-	<select id="hoist" class="round" style="width: 90%;">
-		<option value="true">Yes</option>
-		<option value="false" selected>No</option>
-	</select><br>
-	Mentionable:<br>
-	<select id="mentionable" class="round" style="width: 90%;">
-		<option value="true" selected>Yes</option>
-		<option value="false">No</option>
-	</select><br>
-</div>
-<div style="float: right; width: 50%;">
-	Color:<br>
-	<input id="color" class="round" type="text" placeholder="Leave blank for default!"><br>
-	Position:<br>
-	<input id="position" class="round" type="text" placeholder="Leave blank for default!" style="width: 90%;"><br>
-</div>
-<div>
-	<div style="float: left; width: 35%;">
-		Store In:<br>
-		<select id="storage" class="round" onchange="glob.variableChange(this, 'varNameContainer')">
-			${data.variables[0]}
+<div style="padding-top: 8px;">
+	<div style="float: left; width: 50%;">
+		Data Name:<br>
+		<input id="dataName" class="round" type="text">
+	</div>
+	<div style="float: left; width: 45%;">
+		Control Type:<br>
+		<select id="changeType" class="round">
+			<option value="0" selected>Set Value</option>
+			<option value="1">Add Value</option>
 		</select>
 	</div>
-	<div id="varNameContainer" style="display: none; float: right; width: 60%;">
-		Variable Name:<br>
-		<input id="varName" class="round" type="text"><br>
-	</div>
+</div><br><br><br>
+<div style="padding-top: 8px;">
+	Value:<br>
+	<input id="value" class="round" type="text" name="is-eval"><br>
 </div>`
 },
 
@@ -108,11 +101,7 @@ Name:<br>
 // functions for the DOM elements.
 //---------------------------------------------------------------------
 
-init: function() {
-	const {glob, document} = this;
-
-	glob.variableChange(document.getElementById('storage'), 'varNameContainer');
-},
+init: function() {},
 
 //---------------------------------------------------------------------
 // Action Bot Function
@@ -124,29 +113,44 @@ init: function() {
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const server = cache.server;
-	const roleData = {};
-	if(data.roleName) {
-		roleData.name = this.evalMessage(data.roleName, cache);
+
+	const dataName = this.evalMessage(data.dataName, cache);
+	const isAdd = Boolean(data.changeType === "1");
+	let val = this.evalMessage(data.value, cache);
+	try {
+		val = this.eval(val, cache);
+	} catch(e) {
+		this.displayError(data, cache, e);
 	}
-	if(data.color) {
-		roleData.color = this.evalMessage(data.color, cache);
+
+	const fs = require("fs");
+	const path = require("path");
+
+	const filePath = path.join(process.cwd(), "data", "globals.json");
+
+	if(!fs.existsSync(filePath)) {
+		fs.writeFileSync(filePath, "{}")
 	}
-	if(data.position) {
-		roleData.position = parseInt(data.position);
+
+	const obj = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+	if(dataName && val) {
+		if(isAdd) {
+			if(!obj[dataName]) {
+				obj[dataName] = val;
+			} else {
+			obj[dataName] += val;
+			}
+		} else {
+			obj[dataName] = val;
+		}
+		fs.writeFileSync(filePath, JSON.stringify(obj));
+	} else if (dataName && !val) {
+		delete obj[dataName];
+		fs.writeFileSync(filePath, JSON.stringify(obj));
 	}
-	roleData.hoist = JSON.parse(data.hoist);
-	roleData.mentionable = JSON.parse(data.mentionable);
-	if(server && server.createRole) {
-		const storage = parseInt(data.storage);
-		server.createRole(roleData).then(function(role) {
-			const varName = this.evalMessage(data.varName, cache);
-			this.storeValue(role, storage, varName, cache);
-			this.callNextAction(cache);
-		}.bind(this)).catch(this.displayError.bind(this, data, cache));
-	} else {
-		this.callNextAction(cache);
-	}
+
+	this.callNextAction(cache);
 },
 
 //---------------------------------------------------------------------

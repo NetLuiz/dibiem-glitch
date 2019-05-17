@@ -37,10 +37,10 @@ subtitle: function(data) {
 	 author: "MrGold",
 
 	 // The version of the mod (Defaults to 1.0.0)
-	 version: "1.9.2", //Added in 1.9.2
+	 version: "1.9.4", //Added in 1.9.4
 
 	 // A short description to show on the mod line for this mod (Must be on a single line)
-	 short_description: "Stores Selected Color",
+	 short_description: "Stores Selected Color (Hex Color)",
 
 	 // If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
      
@@ -117,8 +117,7 @@ Color:<br>
 // functions for the DOM elements.
 //---------------------------------------------------------------------
 
-init: function() {
-},
+init: function() {},
 
 //---------------------------------------------------------------------
 // Action Bot Function

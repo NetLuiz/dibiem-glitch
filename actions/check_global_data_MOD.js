@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Create Role",
+name: "Check Global Data",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Create Role",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Role Control",
+section: "Deprecated",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,20 +23,29 @@ section: "Role Control",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	return `${data.roleName}`;
+	const results = ["Continue Actions", "Stop Action Sequence", "Jump To Action", "Jump Forward Actions"];
+	return `If True: ${results[parseInt(data.iftrue)]} ~ If False: ${results[parseInt(data.iffalse)]}`;
 },
 
 //---------------------------------------------------------------------
-// Action Storage Function
+// DBM Mods Manager Variables (Optional but nice to have!)
 //
-// Stores the relevant variable info for the editor.
+// These are variables that DBM Mods Manager uses to show information
+// about the mods for people to see in the list.
 //---------------------------------------------------------------------
 
-variableStorage: function(data, varType) {
-	const type = parseInt(data.storage);
-	if(type !== varType) return;
-	return ([data.varName, 'Role']);
-},
+// Who made the mod (If not set, defaults to "DBM Mods")
+author: "MrGold",
+
+// The version of the mod (Defaults to 1.0.0)
+version: "1.9.5", //Added in 1.9.5
+
+// A short description to show on the mod line for this mod (Must be on a single line)
+short_description: "Check if a Global Data Value meets the conditions",
+
+// If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
+
+//---------------------------------------------------------------------
 
 //---------------------------------------------------------------------
 // Action Fields
@@ -46,7 +55,7 @@ variableStorage: function(data, varType) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["roleName", "hoist", "mentionable", "color", "position", "storage", "varName"],
+fields: ["dataName", "comparison", "value", "iftrue", "iftrueVal", "iffalse", "iffalseVal"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -66,37 +75,30 @@ fields: ["roleName", "hoist", "mentionable", "color", "position", "storage", "va
 
 html: function(isEvent, data) {
 	return `
-Name:<br>
-<input id="roleName" class="round" type="text"><br>
-<div style="float: left; width: 50%;">
-	Display Separate from Online Users:<br>
-	<select id="hoist" class="round" style="width: 90%;">
-		<option value="true">Yes</option>
-		<option value="false" selected>No</option>
-	</select><br>
-	Mentionable:<br>
-	<select id="mentionable" class="round" style="width: 90%;">
-		<option value="true" selected>Yes</option>
-		<option value="false">No</option>
-	</select><br>
-</div>
-<div style="float: right; width: 50%;">
-	Color:<br>
-	<input id="color" class="round" type="text" placeholder="Leave blank for default!"><br>
-	Position:<br>
-	<input id="position" class="round" type="text" placeholder="Leave blank for default!" style="width: 90%;"><br>
-</div>
-<div>
-	<div style="float: left; width: 35%;">
-		Store In:<br>
-		<select id="storage" class="round" onchange="glob.variableChange(this, 'varNameContainer')">
-			${data.variables[0]}
+<div style="padding-top: 8px;">
+	<div style="float: left; width: 50%;">
+		Data Name:<br>
+		<input id="dataName" class="round" type="text">
+	</div>
+	<div style="float: left; width: 45%;">
+		Comparison Type:<br>
+		<select id="comparison" class="round">
+			<option value="0">Exists</option>
+			<option value="1" selected>Equals</option>
+			<option value="2">Equals Exactly</option>
+			<option value="3">Less Than</option>
+			<option value="4">Greater Than</option>
+			<option value="5">Includes</option>
+			<option value="6">Matches Regex</option>
 		</select>
 	</div>
-	<div id="varNameContainer" style="display: none; float: right; width: 60%;">
-		Variable Name:<br>
-		<input id="varName" class="round" type="text"><br>
-	</div>
+</div><br><br><br>
+<div style="padding-top: 8px;">
+	Value to Compare to:<br>
+	<input id="value" class="round" type="text" name="is-eval">
+</div>
+<div style="padding-top: 16px;">
+	${data.conditions[0]}
 </div>`
 },
 
@@ -111,7 +113,8 @@ Name:<br>
 init: function() {
 	const {glob, document} = this;
 
-	glob.variableChange(document.getElementById('storage'), 'varNameContainer');
+	glob.onChangeTrue(document.getElementById('iftrue'));
+	glob.onChangeFalse(document.getElementById('iffalse'));
 },
 
 //---------------------------------------------------------------------
@@ -124,29 +127,57 @@ init: function() {
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const server = cache.server;
-	const roleData = {};
-	if(data.roleName) {
-		roleData.name = this.evalMessage(data.roleName, cache);
-	}
-	if(data.color) {
-		roleData.color = this.evalMessage(data.color, cache);
-	}
-	if(data.position) {
-		roleData.position = parseInt(data.position);
-	}
-	roleData.hoist = JSON.parse(data.hoist);
-	roleData.mentionable = JSON.parse(data.mentionable);
-	if(server && server.createRole) {
-		const storage = parseInt(data.storage);
-		server.createRole(roleData).then(function(role) {
-			const varName = this.evalMessage(data.varName, cache);
-			this.storeValue(role, storage, varName, cache);
-			this.callNextAction(cache);
-		}.bind(this)).catch(this.displayError.bind(this, data, cache));
-	} else {
+
+	let result = false;
+
+	const dataName = this.evalMessage(data.dataName, cache);
+	const compare = parseInt(data.comparison);
+
+	const fs = require("fs");
+	const path = require("path");
+
+	const filePath = path.join(process.cwd(), "data", "globals.json");
+
+	if(!fs.existsSync(filePath)) {
+		console.log("ERROR: Globals JSON file does not exist!");
 		this.callNextAction(cache);
+		return;
 	}
+
+	const obj = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+	const val1 = obj[dataName];
+
+	let val2 = this.evalMessage(data.value, cache);
+	if(compare !== 6) val2 = this.eval(val2, cache);
+	if(val2 === false) val2 = this.evalMessage(data.value, cache);
+	
+	switch(compare) {
+		case 0:
+			result = Boolean(val1 !== undefined);
+			break;
+		case 1:
+			result = Boolean(val1 == val2);
+			break;
+		case 2:
+			result = Boolean(val1 === val2);
+			break;
+		case 3:
+			result = Boolean(val1 < val2);
+			break;
+		case 4:
+			result = Boolean(val1 > val2);
+			break;
+		case 5:
+			if(typeof(val1.includes) === 'function') {
+				result = Boolean(val1.includes(val2));
+			}
+			break;
+		case 6:
+			result = Boolean(val1.match(new RegExp('^' + val2 + '$', 'i')));
+			break;
+	}
+	this.executeResults(result, data, cache);
 },
 
 //---------------------------------------------------------------------
