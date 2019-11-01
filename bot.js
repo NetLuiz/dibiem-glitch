@@ -8,6 +8,10 @@ app.get('/', (req, res) => {
   res.json('Ok');
 });
 
+const listener = app.listen(process.env.PORT, function() {
+  console.log("Your app is listening on port " + listener.address().port);
+});
+
 /*
  * Discord Bot Maker Bot
  * Version 2.0.1
